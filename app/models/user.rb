@@ -7,25 +7,16 @@ class User < ApplicationRecord
                     uniqueness: { case_sensitive: false }
   has_secure_password
   
-  
   has_many :microposts
   
-  # Relationship モデルは User モデル同士の関係だったので、 
-  # User にもフォロー関係のコードを追加します。
-  # has_many :microposts の後に4行追加しています。
   has_many :relationships
-  
-  # 『多対多の図』の左半分にいるUserの1人が自分自身だと仮定すると、
-  # relationships という関係は 『多対多の図』の右半分にいる「自分がフォローしているUser」への参照 を表しています。
   has_many :followings, through: :relationships, source: :follow
- 
-  # 逆に『多対多の図』の右半分にいるUserの1人が自分自身だと仮定すると、
-  # 下記の reverses_of_relationship は 「『多対多の図』の左半分にいるUserからフォローされている」という関係への参照（自分をフォローしているUserへの参照） を表しています。
   has_many :reverses_of_relationship, class_name: 'Relationship', foreign_key: 'follow_id'
- 
   has_many :followers, through: :reverses_of_relationship, source: :user
+ 
+  has_many :favorites
+  has_many :likes, through: :favorites, source: :micropost
   
-  # 中間テーブルを経由して相手の情報を取得できるようにするためには through を使用すると覚えておきましょう。
   
   def follow(other_user)
     # フォローしようとしている other_user が自分自身ではないかを検証
@@ -46,5 +37,19 @@ class User < ApplicationRecord
   def feed_microposts
     Micropost.where(user_id: self.following_ids + [self.id])
   end
+  
+  def like(post)
+    self.favorites.find_or_create_by(micropost_id: post.id)
+  end
+  
+  def unlike(post)
+    favorite = self.favorites.find_by(micropost_id: post.id)
+    favorite.destroy if favorite
+  end
+
+  def like?(post)
+    self.likes.include?(post)
+  end
+  
   
 end
